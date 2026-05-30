@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Brawl Stars | 360° Два стика | Настоящая арена</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0f1e 0%, #0a1525 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .game-wrapper {
+            background: linear-gradient(145deg, #0f172a, #0b1120);
+            border-radius: 48px;
+            padding: 16px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.5);
+            border: 1px solid rgba(251,191,36,0.3);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 28px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            cursor: crosshair;
+            width: 100%;
+            height: auto;
+            background: #2c5a2e;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 60px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+            font-weight: bold;
+        }
+
+        .stat {
+            background: #000000aa;
+            padding: 5px 14px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+        }
+
+        .brawler-select {
+            display: flex;
+            gap: 8px;
+        }
+
+        .brawler-btn {
+            background: #334155;
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 5px 14px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+
+        .brawler-btn.active {
+            background: #fbbf24;
+            color: #0f172a;
+            box-shadow: 0 0 10px #fbbf24;
+        }
+
+        /* Два стика (геймпад) */
+        .dual-sticks {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 80px;
+            padding: 16px 30px;
+            margin-top: 8px;
+        }
+
+        .stick-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stick-label {
+            font-size: 12px;
+            color: #fbbf24;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .stick {
+            width: 120px;
+            height: 120px;
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            border: 2px solid #fbbf2480;
+            position: relative;
+        }
+
+        .stick-knob {
+            width: 52px;
+            height: 52px;
+            background: #fbbf24;
+            border-radius: 50%;
+            transition: transform 0.02s linear;
+            box-shadow: 0 0 10px #fbbf24;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .super-restart {
+            background: #8b5cf6;
+            border: none;
+            width: 70px;
+            height: 70px;
+            border-radius: 50px;
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #5a3c8a;
+            transition: 0.03s linear;
+        }
+
+        .super-restart:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #5a3c8a;
+        }
+
+        .restart-btn {
+            background: #fbbf24;
+            color: #0f172a;
+        }
+
+        @media (max-width: 800px) {
+            .stick { width: 85px; height: 85px; }
+            .stick-knob { width: 38px; height: 38px; }
+            .super-restart { width: 55px; height: 55px; font-size: 22px; }
+            .stick-label { font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="game-wrapper">
+        <canvas id="gameCanvas" width="1100" height="650" style="width:100%; max-width:1100px; height:auto"></canvas>
+        <div class="info-panel">
+            <div class="stats">
+                <div class="stat"><span>❤️</span> <span id="hpValue">120</span></div>
+                <div class="stat"><span>⭐</span> <span id="scoreValue">0</span></div>
+                <div class="stat"><span>⚡</span> <span id="ultValue">0</span>%</div>
+            </div>
+            <div class="brawler-select">
+                <button class="brawler-btn" data-brawler="colt">🤠 Кольт</button>
+                <button class="brawler-btn" data-brawler="shelly">🐚 Шелли</button>
+                <button class="brawler-btn" data-brawler="edgar">🧣 Эдгар</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ДВА СТИКА: левый - движение, правый - стрельба -->
+    <div class="dual-sticks">
+        <div class="stick-area">
+            <div class="stick-label">🎮 ДВИЖЕНИЕ (360°)</div>
+            <div class="stick" id="moveStick">
+                <div class="stick-knob" id="moveKnob"></div>
+            </div>
+        </div>
+        <div class="stick-area">
+            <div class="stick-label">🔫 СТРЕЛЬБА (360°)</div>
+            <div class="stick" id="aimStick">
+                <div class="stick-knob" id="aimKnob"></div>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <button class="super-restart" id="superBtnGamepad">⭐<br><span style="font-size:9px;">СУПЕР</span></button>
+            <button class="super-restart restart-btn" id="restartBtnGamepad">🔄<br><span style="font-size:9px;">РЕСТАРТ</span></button>
+        </div>
+    </div>
+    <div style="text-align: center; font-size: 10px; color: #9ca3af;">
+        🌿 Кусты = невидимость | 🧱 Стены блокируют пули | Левый стик — ходьба, правый — стрельба в любую сторону
+    </div>
+</div>
+
+<script>
+    (function(){
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let cw = 1100, ch = 650;
+        canvas.width = cw;
+        canvas.height = ch;
+
+        // ---------- ИГРОВОЙ МИР (ТОЛЬКО ТРАВА, БЕЗ НЕБА) ----------
+        function drawBackground() {
+            // Трава
+            ctx.fillStyle = "#2c7a3a";
+            ctx.fillRect(0, 0, cw, ch);
+            // Текстурные пятна
+            ctx.fillStyle = "#3a9a4a";
+            for(let i = 0; i < 300; i++) {
+                ctx.beginPath();
+                ctx.arc(Math.random() * cw, Math.random() * ch, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Цветочки
+            ctx.fillStyle = '#ffaa66';
+            for(let i = 0; i < 60; i++) {
+                ctx.beginPath();
+                ctx.arc(20 + Math.random() * (cw - 40), ch - 25 + Math.random() * 20, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Кусты по краям декоративные
+            ctx.fillStyle = "#1f5f2e";
+            for(let i=0;i<8;i++){
+                ctx.beginPath();
+                ctx.ellipse(30 + i*140, ch-25, 25, 15, 0, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+
+        // ---------- ПРЕПЯТСТВИЯ ----------
+        let walls = [];
+        let bushes = [];
+        
+        function initMap() {
+            walls = [
+                { x: 200, y: 300, w: 40, h: 40 }, { x: 450, y: 200, w: 40, h: 40 },
+                { x: 700, y: 350, w: 40, h: 40 }, { x: 880, y: 250, w: 40, h: 40 },
+                { x: 350, y: 480, w: 40, h: 40 }, { x: 600, y: 520, w: 40, h: 40 },
+                { x: 820, y: 480, w: 40, h: 40 }, { x: 100, y: 180, w: 40, h: 40 },
+                { x: 950, y: 120, w: 40, h: 40 }
+            ];
+            bushes = [
+                { x: 50, y: 400, w: 120, h: 80 }, { x: 300, y: 100, w: 100, h: 70 },
+                { x: 550, y: 420, w: 110, h: 70 }, { x: 800, y: 80, w: 100, h: 70 },
+                { x: 950, y: 500, w: 100, h: 80 }, { x: 150, y: 550, w: 100, h: 60 }
+            ];
+        }
+        
+        // Столкновение со стенами (круг с прямоугольником)
+        function collideWithWalls(x, y, r) {
+            for(let w of walls) {
+                let closestX = Math.max(w.x, Math.min(x, w.x + w.w));
+                let closestY = Math.max(w.y, Math.min(y, w.y + w.h));
+                let dx = x - closestX, dy = y - closestY;
+                if(dx * dx + dy * dy < r * r) return true;
+            }
+            return false;
+        }
+        
+        // Проверка нахождения в кусте
+        function isInBush(x, y) {
+            for(let b of bushes) {
+                if(x > b.x && x < b.x + b.w && y > b.y && y < b.y + b.h) return true;
+            }
+            return false;
+        }
+        
+        // ---------- ИГРОК ----------
+        let player = {
+            x: cw/2,
+            y: ch - 80,
+            radius: 24,
+            maxHp: 120,
+            hp: 120,
+            alive: true,
+            superCharge: 0,
+            brawler: 'colt'
+        };
+
+        let bullets = [];
+        let enemies = [];
+        
+        // Характеристики бойцов
+        const brawlerData = {
+            colt: { name: "Кольт", bulletType: "pierce", dmg: 22, attackDelay: 12, superDmg: 45, bulletSpeed: 11 },
+            shelly: { name: "Шелли", bulletType: "shotgun", dmg: 20, attackDelay: 22, superDmg: 60, bulletSpeed: 9.5 },
+            edgar: { name: "Эдгар", bulletType: "melee", dmg: 28, attackDelay: 18, superDmg: 0, bulletSpeed: 0 }
+        };
+        
+        let attackCooldown = 0;
+        let enemiesKilled = 0;
+        let spawnTimer = 0;
+        
+        // ---------- УПРАВЛЕНИЕ СТИКАМИ (360°) ----------
+        let moveDirection = { x: 0, y: 0 };    // для левого стика
+        let aimDirection = { x: 0, y: 0 };     // для правого стика
+        let attackRequest = false;
+        
+        // Обновление статистики
+        function updateStats() {
+            document.getElementById('hpValue').innerText = player.hp;
+            document.getElementById('scoreValue').innerText = enemiesKilled;
+            document.getElementById('ultValue').innerText = Math.floor(player.superCharge);
+        }
+        
+        // Атака в направлении прицела (360°)
+        function performAimedAttack() {
+            if(!player.alive) return;
+            let b = brawlerData[player.brawler];
+            if(b.bulletType === "melee") {
+                // Ближняя атака Эдгара (кругом)
+                for(let i=0;i<enemies.length;i++){
+                    let e = enemies[i];
+                    if(Math.hypot(e.x - player.x, e.y - player.y) < player.radius + e.radius + 30) {
+                        e.hp -= b.dmg;
+                        player.superCharge = Math.min(100, player.superCharge + 12);
+                        if(e.hp <= 0) { enemies.splice(i,1); enemiesKilled++; updateStats(); i--; }
+                    }
+                }
+                return;
+            }
+            
+            // Дальняя атака: направление из прицела
+            let angle = Math.atan2(aimDirection.y, aimDirection.x);
+            // Если стик не тронут — стреляем прямо вверх
+            let dirX = aimDirection.x === 0 && aimDirection.y === 0 ? 0 : Math.cos(angle);
+            let dirY = aimDirection.x === 0 && aimDirection.y === 0 ? -1 : Math.sin(angle);
+            let speed = b.bulletSpeed;
+            
+            if(b.bulletType === "pierce") {
+                bullets.push({
+                    x: player.x, y: player.y - 8,
+                    radius: 8, vx: dirX * speed, vy: dirY * speed,
+                    dmg: b.dmg, pierce: true, color: "#F4D03F"
+                });
+            }
+            else if(b.bulletType === "shotgun") {
+                // Три снаряда с небольшим разбросом
+                let spread = 0.25;
+                bullets.push({ x: player.x-4, y: player.y-6, radius: 6, vx: (dirX + spread)*speed*0.9, vy: (dirY + spread)*speed*0.9, dmg: b.dmg-3, pierce: false, color: "#E67E22" });
+                bullets.push({ x: player.x, y: player.y-8, radius: 7, vx: dirX*speed, vy: dirY*speed, dmg: b.dmg, pierce: false, color: "#E67E22" });
+                bullets.push({ x: player.x+4, y: player.y-6, radius: 6, vx: (dirX - spread)*speed*0.9, vy: (dirY - spread)*speed*0.9, dmg: b.dmg-3, pierce: false, color: "#E67E22" });
+            }
+        }
+        
+        // Суператака
+        function castSuper() {
+            if(!player.alive || player.superCharge < 100) return;
+            let b = brawlerData[player.brawler];
+            if(player.brawler === 'colt') {
+                let angle = Math.atan2(aimDirection.y, aimDirection.x);
+                let dirX = aimDirection.x === 0 && aimDirection.y === 0 ? 0 : Math.cos(angle);
+                let dirY = aimDirection.x === 0 && aimDirection.y === 0 ? -1 : Math.sin(angle);
+                for(let i=-2; i<=2; i++){
+                    let offsetX = dirY * i * 5;
+                    let offsetY = -dirX * i * 5;
+                    bullets.push({ x: player.x+offsetX, y: player.y-10+offsetY, radius: 9, vx: dirX*12 + offsetX*0.2, vy: dirY*12 + offsetY*0.2, dmg: b.superDmg/2, pierce: true, color: "#FFAA33" });
+                }
+            }
+            else if(player.brawler === 'shelly') {
+                let angle = Math.atan2(aimDirection.y, aimDirection.x);
+                let dirX = aimDirection.x === 0 && aimDirection.y === 0 ? 0 : Math.cos(angle);
+                let dirY = aimDirection.x === 0 && aimDirection.y === 0 ? -1 : Math.sin(angle);
+                for(let i=-2;i<=2;i++){
+                    let perpX = -dirY * i * 10;
+                    let perpY = dirX * i * 10;
+                    bullets.push({ x: player.x+perpX, y: player.y-8+perpY, radius: 8, vx: dirX*10 + perpX*0.1, vy: dirY*10 + perpY*0.1, dmg: b.superDmg/2, pierce: false, color: "#FF884D" });
+                }
+            }
+            else if(player.brawler === 'edgar') {
+                if(enemies.length > 0) {
+                    let closest = enemies[0];
+                    let bestDist = Infinity;
+                    for(let e of enemies){
+                        let d = Math.hypot(e.x - player.x, e.y - player.y);
+                        if(d < bestDist) { bestDist = d; closest = e; }
+                    }
+                    if(closest) {
+                        player.x = Math.min(Math.max(closest.x, 40), cw-40);
+                        player.y = Math.min(Math.max(closest.y-40, 60), ch-60);
+                    }
+                }
+            }
+            player.superCharge = 0;
+            updateStats();
+        }
+        
+        // ---------- БОТЫ (С УЛУЧШЕННЫМ ПЕРЕМЕЩЕНИЕМ, НЕ ЗАСТРЕВАЮТ) ----------
+        function spawnEnemy() {
+            let side = Math.floor(Math.random() * 4);
+            let x, y;
+            if(side===0){ x = 30 + Math.random() * 300; y = 30; }
+            else if(side===1){ x = cw-60 - Math.random()*300; y = 40; }
+            else if(side===2){ x = 40; y = 200 + Math.random()*200; }
+            else { x = cw-70; y = 200+Math.random()*200; }
+            
+            let typeRand = Math.random();
+            let enemy;
+            if(typeRand < 0.4) {
+                enemy = { x:x, y:y, radius: 22, hp: 65, maxHp:65, speed:1.45, dmg:16, type:"melee", color:"#AA6FAC", face:"🧣", stuckCounter:0 };
+            } else if(typeRand < 0.7) {
+                enemy = { x:x, y:y, radius: 20, hp: 50, maxHp:50, speed:0.95, dmg:12, type:"ranged", color:"#E0A878", face:"🤠", shootCd:0, stuckCounter:0 };
+            } else {
+                enemy = { x:x, y:y, radius: 28, hp: 100, maxHp:100, speed:0.65, dmg:18, type:"tank", color:"#6C8B9E", face:"🛡️", stuckCounter:0 };
+            }
+            enemies.push(enemy);
+        }
+        
+        // Обновление игры
+        function updateGame() {
+            if(!player.alive) return;
+            
+            // ДВИЖЕНИЕ ИГРОКА (360° от левого стика)
+            let moveSpeed = 5.8;
+            if(moveDirection.x !== 0 || moveDirection.y !== 0) {
+                let len = Math.hypot(moveDirection.x, moveDirection.y);
+                let normX = moveDirection.x / len;
+                let normY = moveDirection.y / len;
+                let newX = player.x + normX * moveSpeed;
+                let newY = player.y + normY * moveSpeed;
+                if(!collideWithWalls(newX, newY, player.radius)) {
+                    player.x = Math.min(Math.max(newX, 28), cw-28);
+                    player.y = Math.min(Math.max(newY, 40), ch-40);
+                }
+            }
+            
+            // Атака по запросу (от правого стика)
+            if(attackRequest && attackCooldown === 0 && player.alive) {
+                performAimedAttack();
+                attackCooldown = brawlerData[player.brawler].attackDelay;
+                attackRequest = false;
+            }
+            if(attackCooldown > 0) attackCooldown--;
+            
+            // Пули
+            for(let i=0;i<bullets.length;i++) {
+                let b = bullets[i];
+                b.x += b.vx;
+                b.y += b.vy;
+                let hitWall = false;
+                for(let w of walls){
+                    if(b.x + b.radius > w.x && b.x - b.radius < w.x+w.w && b.y + b.radius > w.y && b.y - b.radius < w.y+w.h){
+                        hitWall = true; break;
+                    }
+                }
+                if(hitWall || b.x + b.radius < 0 || b.x - b.radius > cw || b.y + b.radius < 0 || b.y - b.radius > ch) {
+                    bullets.splice(i,1); i--; continue;
+                }
+                
+                for(let j=0;j<enemies.length;j++) {
+                    let e = enemies[j];
+                    if(Math.hypot(b.x - e.x, b.y - e.y) < b.radius + e.radius) {
+                        e.hp -= b.dmg;
+                        player.superCharge = Math.min(100, player.superCharge + 6);
+                        if(e.hp <= 0) {
+                            enemies.splice(j,1);
+                            enemiesKilled++;
+                            updateStats();
+                            j--;
+                        }
+                        if(!b.pierce) break;
+                    }
+                }
+            }
+            
+            // Логика врагов (с обходом стен и защитой от застревания)
+            for(let i=0;i<enemies.length;i++) {
+                let e = enemies[i];
+                let dx = player.x - e.x, dy = player.y - e.y;
+                let dist = Math.hypot(dx,dy);
+                if(dist > 0.1) {
+                    let moveX = (dx/dist) * e.speed;
+                    let moveY = (dy/dist) * e.speed;
+                    let newX = e.x + moveX;
+                    let newY = e.y + moveY;
+                    
+                    // Проверка столкновения со стенами
+                    if(!collideWithWalls(newX, newY, e.radius)) {
+                        e.x = newX;
+                        e.y = newY;
+                        e.stuckCounter = 0;
+                    } else {
+                        e.stuckCounter = (e.stuckCounter || 0) + 1;
+                        // Если застрял - пробуем другое направление
+                        if(e.stuckCounter > 8) {
+                            let randAngle = Math.random() * Math.PI * 2;
+                            let tryX = e.x + Math.cos(randAngle) * e.speed;
+                            let tryY = e.y + Math.sin(randAngle) * e.speed;
+                            if(!collideWithWalls(tryX, tryY, e.radius)) {
+                                e.x = tryX;
+                                e.y = tryY;
+                            }
+                            e.stuckCounter = 0;
+                        }
+                    }
+                }
+                
+                // Атака ботов
+                let distToPlayer = Math.hypot(player.x - e.x, player.y - e.y);
+                if(e.type === "melee" && distToPlayer < player.radius + e.radius + 12) {
+                    player.hp -= e.dmg;
+                    updateStats();
+                    if(player.hp <= 0) player.alive = false;
+                }
+                if(e.type === "ranged") {
+                    if(e.shootCd === undefined) e.shootCd = 0;
+                    if(e.shootCd <= 0 && distToPlayer < 280 && distToPlayer > 50) {
+                        let angle = Math.atan2(player.y - e.y, player.x - e.x);
+                        let spd = 7;
+                        bullets.push({ x: e.x, y: e.y, radius: 6, vx: Math.cos(angle)*spd, vy: Math.sin(angle)*spd, dmg: 11, pierce: false, color: "#FFAA66", isEnemy: true });
+                        e.shootCd = 55;
+                    } else { if(e.shootCd>0) e.shootCd--; }
+                }
+                if(e.type === "tank" && distToPlayer < player.radius + e.radius + 18) {
+                    player.hp -= e.dmg;
+                    updateStats();
+                    if(player.hp <= 0) player.alive = false;
+                }
+            }
+            
+            // Спавн врагов
+            if(spawnTimer <= 0 && enemies.length < 7) {
+                spawnEnemy();
+                spawnTimer = 80 - Math.min(35, Math.floor(enemiesKilled/4));
+                if(spawnTimer < 45) spawnTimer = 45;
+            } else { spawnTimer--; }
+            
+            if(player.hp <= 0) player.alive = false;
+            updateStats();
+        }
+        
+        // ОТРИСОВКА
+        function draw() {
+            drawBackground();
+            
+            // Кусты
+            for(let b of bushes) {
+                ctx.fillStyle = "#1f5f2ea0";
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+                for(let i=0;i<15;i++){ ctx.fillStyle = "#3c8f3c"; ctx.beginPath(); ctx.arc(b.x+Math.random()*b.w, b.y+Math.random()*b.h, 4,0,Math.PI*2); ctx.fill(); }
+            }
+            
+            // Стены
+            for(let w of walls) {
+                ctx.fillStyle = "#8B7355";
+                ctx.fillRect(w.x, w.y, w.w, w.h);
+                ctx.fillStyle = "#A67B5B";
+                ctx.fillRect(w.x+4, w.y+4, w.w-8, w.h-8);
+            }
+            
+            // Враги
+            for(let e of enemies) {
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2);
+                ctx.fillStyle = e.color; ctx.fill();
+                ctx.font = `${e.radius+6}px "Segoe UI Emoji"`;
+                ctx.fillText(e.face, e.x-14, e.y-8);
+                let hpPercent = e.hp/e.maxHp;
+                ctx.fillStyle = "#aa2e2e";
+                ctx.fillRect(e.x-24, e.y-24, 48, 7);
+                ctx.fillStyle = "#2ecc71";
+                ctx.fillRect(e.x-24, e.y-24, 48*hpPercent, 6);
+            }
+            
+            // Пули
+            for(let b of bullets) {
+                ctx.beginPath(); ctx.arc(b.x, b.y, b.radius-2, 0, Math.PI*2);
+                ctx.fillStyle = b.isEnemy ? "#FF8C69" : b.color;
+                ctx.fill();
+            }
+            
+            // Игрок
+            if(player.alive) {
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = "#fbbf24";
+                ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI*2);
+                ctx.fillStyle = "#FFD966"; ctx.fill();
+                let faceEmoji = player.brawler === 'colt' ? "🤠" : (player.brawler === 'shelly' ? "🐚" : "🧣");
+                ctx.font = "34px 'Segoe UI Emoji'";
+                ctx.fillText(faceEmoji, player.x-17, player.y-10);
+                if(player.brawler === 'colt'){ ctx.fillStyle="#B45309"; ctx.fillRect(player.x-10, player.y-24, 22, 8); }
+                if(player.brawler === 'shelly'){ ctx.fillStyle="#A0522D"; ctx.beginPath(); ctx.ellipse(player.x-3, player.y-22, 12,8,0,0,Math.PI*2); ctx.fill(); }
+                if(player.brawler === 'edgar'){ ctx.fillStyle="#9b59b6"; ctx.fillRect(player.x-14, player.y-26, 28, 10); }
+                ctx.shadowBlur = 0;
+                let hpPercent = player.hp/player.maxHp;
+                ctx.fillStyle = "#5a1e1e";
+                ctx.fillRect(player.x-36, player.y-38, 72, 10);
+                ctx.fillStyle = "#e74c3c";
+                ctx.fillRect(player.x-36, player.y-38, 72*hpPercent, 9);
+                ctx.fillStyle = "#8b5cf6";
+                ctx.fillRect(player.x-32, player.y-50, (player.superCharge/100)*64, 6);
+            }
+            
+            if(isInBush(player.x, player.y) && player.alive){
+                ctx.globalAlpha = 0.4;
+                ctx.fillStyle = "#aaffaa30";
+                ctx.beginPath(); ctx.arc(player.x, player.y, player.radius+6, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+            
+            if(!player.alive){
+                ctx.globalAlpha = 0.85;
+                ctx.fillStyle = "#0a0f1e";
+                ctx.fillRect(0,0,cw,ch);
+                ctx.globalAlpha = 1;
+                ctx.font = "bold 40px 'Inter'";
+                ctx.fillStyle = "#fbbf24";
+                ctx.fillText("💀 ПОРАЖЕНИЕ 💀", cw/2-170, ch/2-30);
+            }
+        }
+        
+        // ========== НАСТРОЙКА СТИКОВ ==========
+        function setupStick(stickElement, knobElement, onVectorChange) {
+            let active = false;
+            let center = { x: 0, y: 0 };
+            let knob = knobElement;
+            
+            function start(e) {
+                e.preventDefault();
+                active = true;
+                const rect = stickElement.getBoundingClientRect();
+                center.x = rect.left + rect.width/2;
+                center.y = rect.top + rect.height/2;
+                move(e);
+            }
+            function move(e) {
+                if(!active) return;
+                e.preventDefault();
+                let clientX, clientY;
+                if(e.touches) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+                let dx = clientX - center.x;
+                let dy = clientY - center.y;
+                let dist = Math.hypot(dx, dy);
+                let maxDist = 45;
+                let limited = false;
+                if(dist > maxDist) {
+                    dx = dx / dist * maxDist;
+                    dy = dy / dist * maxDist;
+                    dist = maxDist;
+                    limited = true;
+                }
+                knob.style.transform = `translate(${dx}px, ${dy}px)`;
+                let vec = { x: dx / maxDist, y: dy / maxDist };
+                if(dist < 8) vec = { x: 0, y: 0 };
+                onVectorChange(vec);
+            }
+            function end() {
+                active = false;
+                knob.style.transform = `translate(0px, 0px)`;
+                onVectorChange({ x: 0, y: 0 });
+            }
+            stickElement.addEventListener('mousedown', start);
+            window.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', end);
+            stickElement.addEventListener('touchstart', start);
+            window.addEventListener('touchmove', move);
+            window.addEventListener('touchend', end);
+        }
+        
+        // Левый стик - движение
+        setupStick(document.getElementById('moveStick'), document.getElementById('moveKnob'), (vec) => {
+            moveDirection = vec;
+        });
+        
+        // Правый стик - прицел (и атака при отпускании / касании)
+        let aimVec = { x: 0, y: 0 };
+        let isAiming = false;
+        setupStick(document.getElementById('aimStick'), document.getElementById('aimKnob'), (vec) => {
+            aimVec = vec;
+            aimDirection = vec;
+            if(aimVec.x !== 0 || aimVec.y !== 0) {
+                // Если стик двигается — запрашиваем атаку
+                if(!isAiming) {
+                    attackRequest = true;
+                    isAiming = true;
+                }
+            } else {
+                isAiming = false;
+            }
+        });
+        
+        // Кнопки
+        document.getElementById('superBtnGamepad').addEventListener('click', () => castSuper());
+        document.getElementById('restartBtnGamepad').addEventListener('click', () => restart());
+        
+        // Клавиатура (для ПК)
+        let keyMove = { left: false, right: false, up:
