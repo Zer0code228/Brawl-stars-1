@@ -733,4 +733,68 @@
         document.getElementById('restartBtnGamepad').addEventListener('click', () => restart());
         
         // Клавиатура (для ПК)
-        let keyMove =
+        let keyMove = { left: false, right: false, up: false, down: false };
+        window.addEventListener('keydown', (e)=>{
+            if(e.key==='ArrowLeft') keyMove.left=true;
+            if(e.key==='ArrowRight') keyMove.right=true;
+            if(e.key==='ArrowUp') keyMove.up=true;
+            if(e.key==='ArrowDown') keyMove.down=true;
+            if(e.key===' '||e.key==='Space'||e.key==='e') { e.preventDefault(); attackRequest=true; }
+            if(e.key==='q'||e.key==='Q') castSuper();
+            // Обновляем движение от стрелок
+            let mx = (keyMove.right?1:0) - (keyMove.left?1:0);
+            let my = (keyMove.down?1:0) - (keyMove.up?1:0);
+            let len = Math.hypot(mx,my);
+            if(len>0) { mx/=len; my/=len; }
+            moveDirection = { x: mx, y: my };
+        });
+        window.addEventListener('keyup', (e)=>{
+            if(e.key==='ArrowLeft') keyMove.left=false;
+            if(e.key==='ArrowRight') keyMove.right=false;
+            if(e.key==='ArrowUp') keyMove.up=false;
+            if(e.key==='ArrowDown') keyMove.down=false;
+            let mx = (keyMove.right?1:0) - (keyMove.left?1:0);
+            let my = (keyMove.down?1:0) - (keyMove.up?1:0);
+            let len = Math.hypot(mx,my);
+            if(len>0) { mx/=len; my/=len; }
+            moveDirection = { x: mx, y: my };
+        });
+        
+        function restart() {
+            player.hp = player.maxHp;
+            player.alive = true;
+            player.superCharge = 0;
+            player.x = cw/2;
+            player.y = ch - 80;
+            enemies = [];
+            bullets = [];
+            enemiesKilled = 0;
+            attackCooldown = 0;
+            spawnTimer = 5;
+            updateStats();
+            for(let i=0;i<3;i++) spawnEnemy();
+        }
+        
+        function setBrawler(b) {
+            player.brawler = b;
+            document.querySelectorAll('.brawler-btn').forEach(btn=>btn.classList.remove('active'));
+            document.querySelector(`[data-brawler="${b}"]`).classList.add('active');
+            restart();
+        }
+        
+        document.querySelectorAll('.brawler-btn').forEach(btn=>{
+            btn.addEventListener('click',()=>setBrawler(btn.getAttribute('data-brawler')));
+        });
+        
+        initMap();
+        setBrawler('colt');
+        function animate(){
+            updateGame();
+            draw();
+            requestAnimationFrame(animate);
+        }
+        animate();
+    })();
+</script>
+</body>
+    </html>
